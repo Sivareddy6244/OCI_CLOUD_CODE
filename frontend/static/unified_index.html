@@ -93,14 +93,17 @@
   .tag-edit-row .remove-tag { background:none; border:none; color:#ef4444; font-size:1.2rem; cursor:pointer; padding:0 4px; }
   .regions-select { height:120px; }
   /* ── Toast notifications ── */
-  #toast-container { position:fixed; top:16px; right:16px; z-index:10000; display:flex; flex-direction:column; gap:8px; pointer-events:none; }
+  #toast-container { position:fixed; top:16px; right:16px; z-index:10000; display:flex; flex-direction:column; gap:8px; pointer-events:none; max-width:calc(100vw - 32px); }
   .toast-msg { min-width:260px; max-width:400px; padding:10px 14px; border-radius:6px; font-size:0.88rem; box-shadow:0 2px 8px rgba(0,0,0,0.15); opacity:0; pointer-events:auto; transition:opacity 0.25s; display:flex; align-items:flex-start; gap:8px; }
   .toast-msg.show { opacity:1; }
-  .toast-text { flex:1; }
+  .toast-text { flex:1; white-space:pre-wrap; word-break:break-word; }
+  .toast-actions { display:flex; flex-direction:column; gap:4px; flex-shrink:0; }
   .toast-close { background:none; border:none; cursor:pointer; font-size:1.1rem; line-height:1; padding:0; opacity:0.55; color:inherit; flex-shrink:0; margin-top:-1px; }
   .toast-close:hover { opacity:1; }
+  .toast-copy { background:none; border:1px solid currentColor; border-radius:4px; cursor:pointer; font-size:0.72rem; line-height:1; padding:3px 6px; opacity:0.75; color:inherit; }
+  .toast-copy:hover { opacity:1; }
   .toast-success { background:#d1fae5; color:#065f46; border-left:4px solid #10b981; }
-  .toast-error { background:#fee2e2; color:#991b1b; border-left:4px solid #ef4444; }
+  .toast-error { background:#fee2e2; color:#991b1b; border-left:4px solid #ef4444; max-width:560px; max-height:min(70vh, 420px); overflow-y:auto; }
   .toast-info { background:#dbeafe; color:#1e40af; border-left:4px solid #3b82f6; }
   /* ── VM size search ── */
   .vmsize-search-wrap { position:relative; }
@@ -7216,6 +7219,27 @@
     msgSpan.className = "toast-text";
     msgSpan.textContent = message;
 
+    const actions = document.createElement("div");
+    actions.className = "toast-actions";
+
+    if (type === "error") {
+      const copyBtn = document.createElement("button");
+      copyBtn.className = "toast-copy";
+      copyBtn.type = "button";
+      copyBtn.textContent = "Copy";
+      copyBtn.setAttribute("aria-label", "Copy error message");
+      copyBtn.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(message);
+          copyBtn.textContent = "Copied";
+          setTimeout(() => { copyBtn.textContent = "Copy"; }, 1500);
+        } catch (_) {
+          // Clipboard access unavailable; leave the button as-is so the user can still select the text manually.
+        }
+      });
+      actions.appendChild(copyBtn);
+    }
+
     const closeBtn = document.createElement("button");
     closeBtn.className = "toast-close";
     closeBtn.innerHTML = "&times;";
@@ -7224,16 +7248,22 @@
       toast.classList.remove("show");
       setTimeout(() => toast.remove(), 300);
     });
+    actions.appendChild(closeBtn);
 
     toast.appendChild(msgSpan);
-    toast.appendChild(closeBtn);
+    toast.appendChild(actions);
     container.appendChild(toast);
     // Trigger fade-in
     requestAnimationFrame(() => { requestAnimationFrame(() => { toast.classList.add("show"); }); });
-    setTimeout(() => {
-      toast.classList.remove("show");
-      setTimeout(() => toast.remove(), 300);
-    }, 10000);
+
+    // Error toasts often carry long, technical messages the user needs time to read or copy,
+    // so they stay until dismissed instead of auto-disappearing after 10s like success/info toasts.
+    if (type !== "error") {
+      setTimeout(() => {
+        toast.classList.remove("show");
+        setTimeout(() => toast.remove(), 300);
+      }, 10000);
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
