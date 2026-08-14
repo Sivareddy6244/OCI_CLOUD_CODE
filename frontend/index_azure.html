@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Deploy Azure VM - Enhanced</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; max-width: 700px; }
+    label { font-weight: bold; margin-top: 10px; display: block; }
+    select, input, textarea, button { width: 100%; margin-top: 5px; padding: 8px; }
+    button { margin-top: 15px; cursor: pointer; }
+    .checkbox-group label { display: inline-block; margin-right: 15px; font-weight: normal; }
+  </style>
+</head>
+<body>
+  <h2>Multi-Cloud eStore</h2>
+
+  <label>Subscription:</label>
+  <select id="subscription" onchange="onSubscriptionChange()">
+    <option value="">-- Select Subscription --</option>
+  </select>
+
+  <label>Resource Group:</label>
+  <select id="resourceGroup" onchange="onResourceGroupChange()" disabled>
+    <option value="">-- Select Resource Group --</option>
+  </select>
+
+  <label>Virtual Network:</label>
+  <select id="vnet" onchange="onVnetChange()" disabled>
+    <option value="">-- Select VNet --</option>
+  </select>
+
+  <label>Subnet:</label>
+  <select id="subnet" disabled>
+    <option value="">-- Select Subnet --</option>
+  </select>
+
+  <label>Network Security Group:</label>
+  <select id="nsg" disabled>
+    <option value="">-- Select NSG --</option>
+  </select>
+
+  <label>Image Definition:</label>
+  <select id="imageDefinition" onchange="onImageDefChange()" disabled>
+    <option value="">-- Select Image Definition --</option>
+  </select>
+
+  <label>Image Version:</label>
+  <select id="imageVersion" disabled>
+    <option value="">-- Select Image Version --</option>
+  </select>
+
+  <label>VM Size:</label>
+  <select id="vmSize" disabled>
+    <option value="">-- Select VM Size --</option>
+  </select>
+
+  <label>OS Disk Type:</label>
+  <select id="osDiskType">
+    <option value="Standard_LRS">Standard HDD (Standard_LRS)</option>
+    <option value="StandardSSD_LRS">Standard SSD (StandardSSD_LRS)</option>
+    <option value="Premium_LRS">Premium SSD (Premium_LRS)</option>
+  </select>
+
+  <label>Region / Location:</label>
+  <input id="location" type="text" readonly placeholder="Auto-filled" />
+
+  <label>Availability Zone:</label>
+  <select id="availabilityZone">
+    <option value="">No redundancy</option>
+    <option value="1">Zone 1</option>
+    <option value="2">Zone 2</option>
+    <option value="3">Zone 3</option>
+  </select>
+
+  <label>Public IP:</label>
+  <select id="publicIpOption">
+    <option value="new">Create new public IP</option>
+    <option value="none">No public IP</option>
+  </select>
+
+  <label>VM Name:</label>
+  <input id="vmName" type="text" placeholder="e.g. test-vm" />
+
+  <label>Authentication Type:</label>
+  <select id="authType" onchange="onAuthTypeChange()">
+    <option value="password">Username + Password</option>
+  </select>
+
+  <div id="authFields">
+    <label>Admin Username:</label>
+    <input id="adminUser" type="text" placeholder="e.g. azureuser" />
+    <label>Password:</label>
+    <input id="adminPassword" type="password" placeholder="Enter strong password" />
+  </div>
+
+  <div class="checkbox-group">
+    <label><input type="checkbox" id="managedDisk" checked /> Use managed disks</label>
+    <label><input type="checkbox" id="acceleratedNetworking" /> Accelerated networking</label>
+    <label><input type="checkbox" id="deletePublicIPOnDelete" checked /> Delete public IP on delete</label>
+  </div>
+
+  <button onclick="deployVm()">Deploy VM</button>
+  <div id="status" style="margin-top:20px;"></div>
+
+<script>
+  const backendUrl = 'http://localhost:8000';
+
+  async function fetchJson(url) {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText}: ${await res.text()}`);
+    return await res.json();
+  }
+
+  function clearSelect(id, txt="-- Select --") {
+    const sel = document.getElementById(id);
+    sel.innerHTML = `<option value="">${txt}</option>`;
+    sel.disabled = true;
+  }
+
+  function onAuthTypeChange() {
+    const authType = document.getElementById('authType').value;
+    document.getElementById('authFields').style.display = authType === 'password' ? 'block' : 'none';
+  }
+
+  async function loadSubscriptions() {
+    try {
+      const subs = await fetchJson(`${backendUrl}/api/azure/subscriptions`);
+      const sel = document.getElementById('subscription');
+      clearSelect('subscription', "-- Select Subscription --");
+      subs.forEach(s => {
+        let o = document.createElement('option');
+        o.value = s.id; o.text = s.name;
+        sel.appendChild(o);
+      });
+      sel.disabled = false;
+    } catch (e) { alert(e.message); }
+  }
+
+  async function onSubscriptionChange() {
+    const sub = document.getElementById('subscription').value;
+    clearSelect('resourceGroup');
+    clearSelect('vnet');
+    clearSelect('subnet');
+    clearSelect('nsg');
+    clearSelect('imageDefinition');
+    clearSelect('imageVersion');
+    clearSelect('vmSize');
+    document.getElementById('location').value = '';
+    if (!sub) return;
+    try {
+      const rgs = await fetchJson(`${backendUrl}/api/azure/resource-groups?subscription_id=${sub}`);
+      const rg = document.getElementById('resourceGroup');
+      rgs.forEach(g => {
+        let o = document.createElement('option');
+        o.value = g.name; o.text = g.name;
+        rg.appendChild(o);
+      });
+      rg.disabled = false;
+    } catch (e) { alert(e.message); }
+  }
+
+  async function onResourceGroupChange() {
+    const sub = document.getElementById('subscription').value;
+    const rg = document.getElementById('resourceGroup').value;
+    clearSelect('vnet');
+    clearSelect('subnet');
+    clearSelect('nsg');
+    clearSelect('imageDefinition');
+    clearSelect('imageVersion');
+    clearSelect('vmSize');
+    document.getElementById('location').value = '';
+    if (!sub || !rg) return;
+
+    try {
+      const vnets = await fetchJson(`${backendUrl}/api/azure/vnets?subscription_id=${sub}`);
+      const vsel = document.getElementById('vnet');
+      vnets.filter(v => v.resource_group === rg).forEach(v => {
+        const o = document.createElement('option');
+        o.value = v.name; o.text = v.name; o.dataset.location = v.location;
+        vsel.appendChild(o);
+      });
+      vsel.disabled = false;
+
+      const nsgs = await fetchJson(`${backendUrl}/api/azure/nsgs?subscription_id=${sub}&resource_group=${rg}`);
+      const nsel = document.getElementById('nsg');
+      nsgs.forEach(n => {
+        let o = document.createElement('option');
+        o.value = n.id; o.text = n.name;
+        nsel.appendChild(o);
+      });
+      nsel.disabled = false;
+
+      const defs = await fetchJson(`${backendUrl}/api/azure/image-definitions`);
+      const dsel = document.getElementById('imageDefinition');
+      defs.forEach(d => {
+        const o = document.createElement('option');
+        o.value = d.name;
+        o.text = d.label;
+        o.dataset.subscriptionId = d.subscription_id;
+        o.dataset.resourceGroup = d.resource_group;
+        o.dataset.galleryName = d.gallery;
+        dsel.appendChild(o);
+      });
+      dsel.disabled = false;
+
+    } catch (e) { alert(e.message); }
+  }
+
+  async function onVnetChange() {
+    const sub = document.getElementById('subscription').value;
+    const rg = document.getElementById('resourceGroup').value;
+    const vname = document.getElementById('vnet').value;
+    const loc = document.querySelector('#vnet option:checked')?.dataset.location || '';
+    clearSelect('subnet');
+    clearSelect('vmSize');
+    document.getElementById('location').value = loc;
+    if (!sub || !rg || !vname) return;
+
+    try {
+      const subs = await fetchJson(`${backendUrl}/api/azure/subnets?subscription_id=${sub}&resource_group=${rg}&vnet_name=${vname}`);
+      const ssel = document.getElementById('subnet');
+      subs.forEach(s => {
+        const o = document.createElement('option');
+        o.value = s.id; o.text = `${s.name} (${s.address_prefix})`;
+        ssel.appendChild(o);
+      });
+      ssel.disabled = false;
+
+      const sizes = await fetchJson(`${backendUrl}/api/azure/vm-sizes?subscription_id=${sub}&location=${loc}`);
+      const ms = document.getElementById('vmSize');
+      sizes.forEach(sz => {
+        const o = document.createElement('option');
+        o.value = sz.name;
+        o.text = `${sz.name} (${sz.numberOfCores} vCPU, ${Math.round(sz.memoryInMB / 1024)} GB RAM)`;
+        ms.appendChild(o);
+      });
+      ms.disabled = false;
+    } catch (e) { alert(e.message); }
+  }
+
+  async function onImageDefChange() {
+    clearSelect('imageVersion');
+    const selOption = document.querySelector('#imageDefinition option:checked');
+    if (!selOption || !selOption.value) return;
+
+    const sub = selOption.dataset.subscriptionId;
+    const rg = selOption.dataset.resourceGroup;
+    const gallery_name = selOption.dataset.galleryName;
+    const image_definition_name = selOption.value;
+
+    try {
+      const vers = await fetchJson(`${backendUrl}/api/azure/image-versions?subscription_id=${sub}&resource_group=${rg}&gallery_name=${encodeURIComponent(gallery_name)}&image_definition_name=${encodeURIComponent(image_definition_name)}`);
+      const vsel = document.getElementById('imageVersion');
+      vers.forEach(v => {
+        const o = document.createElement('option');
+        o.value = v.name; o.text = v.name;
+        vsel.appendChild(o);
+      });
+      if (vers.length > 0) {
+        vsel.value = vers[vers.length - 1].name; // Select latest version
+      }
+      vsel.disabled = false;
+    } catch (e) { alert(e.message); }
+  }
+
+  async function deployVm() {
+    const status = document.getElementById('status');
+    status.textContent = 'Deploying...';
+
+    const subscription = document.getElementById('subscription').value;
+    const resourceGroup = document.getElementById('resourceGroup').value;
+    const vnet = document.getElementById('vnet').value;
+    const subnet = document.getElementById('subnet').value;
+    const nsg = document.getElementById('nsg').value;
+
+    const selectedImageDef = document.querySelector('#imageDefinition option:checked');
+    if (!selectedImageDef) {
+      alert('Select an image definition');
+      status.textContent = '';
+      return;
+    }
+
+    const payload = {
+      subscription_id: subscription,
+      resource_group: resourceGroup,
+      vnet_name: vnet,
+      subnet_id: subnet,
+      nsg_id: nsg,
+      gallery_name: selectedImageDef.dataset.galleryName,
+      image_name: selectedImageDef.value,
+      image_version: document.getElementById('imageVersion').value,
+      vm_size: document.getElementById('vmSize').value,
+      location: document.getElementById('location').value,
+      availability_zone: document.getElementById('availabilityZone').value || '',
+      public_ip_option: document.getElementById('publicIpOption').value,
+      vm_name: document.getElementById('vmName').value.trim(),
+      os_disk_type: document.getElementById('osDiskType').value,
+      managed_disk: document.getElementById('managedDisk').checked,
+      accelerated_networking: document.getElementById('acceleratedNetworking').checked,
+      delete_public_ip_on_delete: document.getElementById('deletePublicIPOnDelete').checked,
+      image_subscription_id: selectedImageDef.dataset.subscriptionId,
+      image_resource_group: selectedImageDef.dataset.resourceGroup,
+      admin_username: document.getElementById('adminUser').value.trim(),
+      admin_password: document.getElementById('adminPassword').value.trim(),
+      auth_type: 'password'
+    };
+
+    if (!payload.subscription_id || !payload.resource_group || !payload.vnet_name || !payload.subnet_id || !payload.nsg_id ||
+        !payload.gallery_name || !payload.image_name || !payload.image_version || !payload.vm_size || !payload.location ||
+        !payload.vm_name || !payload.admin_username || !payload.admin_password) {
+      alert('Please fill all required fields.');
+      status.textContent = '';
+      return;
+    }
+
+    try {
+      const res = await fetch(`${backendUrl}/api/azure/deploy-vm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const json = await res.json();
+      status.textContent = `VM started. ID: ${json.vm_id}`;
+    } catch (e) {
+      status.textContent = `Error: ${e.message}`;
+    }
+  }
+
+  window.onload = loadSubscriptions;
+</script>
+</body>
+</html>

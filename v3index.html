@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Multi-Cloud Portal</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
+  <style>
+    body {
+      padding: 40px;
+      background: #f8f9fa;
+    }
+    h2 {
+      margin-bottom: 30px;
+    }
+    .form-section {
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2 class="text-center">Multi-Cloud eStore</h2>
+    <form id="deployForm">
+      <div class="form-section">
+        <label for="cloud" class="form-label">Cloud Provider</label>
+        <select id="cloud" class="form-select" name="cloud" required>
+          <option value="">-- Choose --</option>
+          <option value="aws">AWS</option>
+          <option value="azure">AZURE</option>
+          <option value="gcp">GCP</option>
+          <option value="oci">OCI</option>
+        </select>
+      </div>
+
+      <div class="form-section">
+        <label for="account" class="form-label">Account ID</label>
+        <select id="account" class="form-select" name="account" required>
+          <option value="">Select Cloud First</option>
+        </select>
+      </div>
+
+      <div class="form-section">
+        <label for="vpc" class="form-label">VPC</label>
+        <select id="vpc" class="form-select" name="vpc_id" required>
+          <option value="">Select Account First</option>
+        </select>
+      </div>
+
+      <div class="form-section">
+        <label for="subnet" class="form-label">Subnet</label>
+        <select id="subnet" class="form-select" name="subnet_id" required>
+          <option value="">Select VPC First</option>
+        </select>
+      </div>
+
+      <div class="form-section">
+        <label for="security_group" class="form-label">Security Group</label>
+        <select id="security_group" class="form-select" name="security_group" required>
+          <option value="">Select VPC First</option>
+        </select>
+      </div>
+
+      <div class="form-section">
+        <label for="vm_name" class="form-label">VM Name</label>
+        <input type="text" id="vm_name" class="form-control" name="vm_name" required />
+      </div>
+
+      <div class="form-section">
+        <label for="ami" class="form-label">Select AMI</label>
+        <select id="ami" class="form-select" name="ami_name" required>
+          <option value="">Select Account First</option>
+        </select>
+      </div>
+
+      <div class="form-section">
+        <label for="os_type" class="form-label">OS Type</label>
+        <select id="os_type" class="form-select" name="os_type" required>
+          <option value="">-- Select OS Type --</option>
+          <option value="linux">Linux</option>
+          <option value="windows">Windows</option>
+        </select>
+      </div>
+
+      <div class="form-section">
+        <label for="instance_type" class="form-label">Instance Type</label>
+        <select id="instance_type" class="form-select" name="instance_type" required>
+          <option value="">Select Account First</option>
+        </select>
+      </div>
+
+      <div class="form-section">
+        <label for="key_pair_name" class="form-label">Key Pair Name</label>
+        <select id="key_pair_name" class="form-select" name="key_pair_name" required>
+          <option value="">Click 'Create Key Pair' first</option>
+        </select>
+        <button type="button" class="btn btn-outline-primary mt-2" id="createKeyBtn">Create Key Pair</button>
+        <div id="keyPairMsg" class="mt-2 text-success"></div>
+      </div>
+
+      <button type="submit" class="btn btn-success">Deploy VM</button>
+    </form>
+
+    <div id="deployResult" class="mt-4"></div>
+  </div>
+
+<script>
+  const cloudSelect = document.getElementById("cloud");
+  const accountSelect = document.getElementById("account");
+  const vpcSelect = document.getElementById("vpc");
+  const subnetSelect = document.getElementById("subnet");
+  const sgSelect = document.getElementById("security_group");
+  const keyPairSelect = document.getElementById("key_pair_name");
+  const createKeyBtn = document.getElementById("createKeyBtn");
+  const keyPairMsg = document.getElementById("keyPairMsg");
+  const deployForm = document.getElementById("deployForm");
+  const deployResult = document.getElementById("deployResult");
+  const amiSelect = document.getElementById("ami");
+  const instanceTypeSelect = document.getElementById("instance_type");
+
+  // On Cloud change
+  cloudSelect.addEventListener("change", () => {
+    resetDropdown(accountSelect, "Loading accounts...");
+    resetDropdown(vpcSelect, "Select Account First");
+    resetDropdown(subnetSelect, "Select VPC First");
+    resetDropdown(sgSelect, "Select VPC First");
+    resetDropdown(keyPairSelect, "Click 'Create Key Pair' first");
+    resetDropdown(amiSelect, "Select Account First");
+    resetDropdown(instanceTypeSelect, "Select Account First");
+    keyPairMsg.textContent = "";
+
+    if (cloudSelect.value === "aws") {
+      fetchAccounts();
+    } else {
+      resetDropdown(accountSelect, "Select Cloud First");
+      resetDropdown(amiSelect, "Select Cloud First");
+      resetDropdown(instanceTypeSelect, "Select Cloud First");
+    }
+  });
+
+  // On Account change
+  accountSelect.addEventListener("change", () => {
+    resetDropdown(vpcSelect, "Loading VPCs...");
+    resetDropdown(subnetSelect, "Select VPC First");
+    resetDropdown(sgSelect, "Select VPC First");
+    resetDropdown(keyPairSelect, "Click 'Create Key Pair' first");
+    resetDropdown(amiSelect, "Loading AMIs...");
+    resetDropdown(instanceTypeSelect, "Loading Instance Types...");
+    keyPairMsg.textContent = "";
+
+    const account = accountSelect.value;
+    if (account) {
+      fetchVPCs(account);
+      fetchAMIs(account);
+      fetchInstanceTypes(account);
+    } else {
+      resetDropdown(vpcSelect, "Select Account First");
+      resetDropdown(amiSelect, "Select Account First");
+      resetDropdown(instanceTypeSelect, "Select Account First");
+    }
+  });
+
+  // On VPC change
+  vpcSelect.addEventListener("change", () => {
+    resetDropdown(subnetSelect, "Loading Subnets...");
+    resetDropdown(sgSelect, "Loading Security Groups...");
+    resetDropdown(keyPairSelect, "Click 'Create Key Pair' first");
+    keyPairMsg.textContent = "";
+
+    const account = accountSelect.value;
+    const vpcId = vpcSelect.value;
+    if (vpcId) {
+      fetchSubnets(account, vpcId);
+      fetchSecurityGroups(account, vpcId);
+    } else {
+      resetDropdown(subnetSelect, "Select VPC First");
+      resetDropdown(sgSelect, "Select VPC First");
+    }
+  });
+
+  // Fetch accounts for AWS cloud
+  async function fetchAccounts() {
+    try {
+      const res = await fetch("/accounts/aws");
+      const data = await res.json();
+      if (res.ok) {
+        const options = data.accounts.map(acc => ({ id: acc.account_id, name: acc.account_id }));
+        populateDropdown(accountSelect, options, "id", "name");
+      } else {
+        resetDropdown(accountSelect, "Error loading accounts");
+      }
+    } catch {
+      resetDropdown(accountSelect, "Error loading accounts");
+    }
+  }
+
+  // Fetch VPCs by account
+  async function fetchVPCs(accountId) {
+    try {
+      const res = await fetch(`/vpcs/aws?account=${encodeURIComponent(accountId)}`);
+      const data = await res.json();
+      if (res.ok) {
+        const options = data.vpcs.map(v => ({ id: v.vpc_id, name: `${v.vpc_id} (${v.cidr_block})` }));
+        populateDropdown(vpcSelect, options, "id", "name");
+      } else {
+        resetDropdown(vpcSelect, "Error loading VPCs");
+      }
+    } catch {
+      resetDropdown(vpcSelect, "Error loading VPCs");
+    }
+  }
+
+  // Fetch Subnets by account and VPC
+  async function fetchSubnets(accountId, vpcId) {
+    try {
+      const res = await fetch(`/subnets/aws?account=${encodeURIComponent(accountId)}&vpc_id=${encodeURIComponent(vpcId)}`);
+      const data = await res.json();
+      if (res.ok) {
+        const options = data.subnets.map(s => ({ id: s.subnet_id, name: `${s.subnet_id} (${s.cidr_block})` }));
+        populateDropdown(subnetSelect, options, "id", "name");
+      } else {
+        resetDropdown(subnetSelect, "Error loading subnets");
+      }
+    } catch {
+      resetDropdown(subnetSelect, "Error loading subnets");
+    }
+  }
+
+  // Fetch Security Groups by account and VPC
+  async function fetchSecurityGroups(accountId, vpcId) {
+    try {
+      const res = await fetch(`/security-groups/aws?account=${encodeURIComponent(accountId)}&vpc_id=${encodeURIComponent(vpcId)}`);
+      const data = await res.json();
+      if (res.ok) {
+        const options = data.security_groups.map(sg => ({
+          id: sg.group_id,
+          name: `${sg.group_name} (${sg.group_id})`,
+        }));
+        populateDropdown(sgSelect, options, "id", "name");
+      } else {
+        resetDropdown(sgSelect, "Error loading security groups");
+      }
+    } catch {
+      resetDropdown(sgSelect, "Error loading security groups");
+    }
+  }
+
+  // Fetch AMIs filtered by account (your specific use case)
+  async function fetchAMIs(account) {
+    try {
+      const res = await fetch(`/amis/aws?account=${encodeURIComponent(account)}`);
+      const data = await res.json();
+      if (res.ok) {
+        const options = data.amis.map(ami => ({ id: ami.ami_id, name: ami.name || ami.ami_id }));
+        populateDropdown(amiSelect, options, "id", "name");
+      } else {
+        resetDropdown(amiSelect, "Error loading AMIs");
+      }
+    } catch {
+      resetDropdown(amiSelect, "Error loading AMIs");
+    }
+  }
+
+  // Fetch Instance Types dynamically for AWS account
+  async function fetchInstanceTypes(account) {
+    if (cloudSelect.value !== "aws" || !account) {
+      resetDropdown(instanceTypeSelect, "Select Account First");
+      return;
+    }
+
+    resetDropdown(instanceTypeSelect, "Loading Instance Types...");
+    try {
+      const res = await fetch(`/instance-types/aws?account=${encodeURIComponent(account)}`);
+      const data = await res.json();
+      if (res.ok) {
+        if (data.instance_types && data.instance_types.length > 0) {
+          const options = data.instance_types.map(type => ({ id: type, name: type }));
+          populateDropdown(instanceTypeSelect, options, "id", "name");
+        } else {
+          resetDropdown(instanceTypeSelect, "No instance types found");
+        }
+      } else {
+        resetDropdown(instanceTypeSelect, "Error loading instance types");
+      }
+    } catch {
+      resetDropdown(instanceTypeSelect, "Error loading instance types");
+    }
+  }
+
+  // Create Key Pair button handler
+  createKeyBtn.addEventListener("click", async () => {
+    keyPairMsg.textContent = "Creating key pair...";
+    const account = accountSelect.value;
+    if (!account) {
+      keyPairMsg.textContent = "Select account first.";
+      return;
+    }
+    try {
+      const res = await fetch(`/create-keypair/aws?account=${encodeURIComponent(account)}`, { method: "POST" });
+      const data = await res.json();
+      if (res.ok) {
+        keyPairMsg.textContent = `${data.message} (${data.key_pair_name})`;
+        keyPairSelect.innerHTML = `<option value="${data.key_pair_name}">${data.key_pair_name}</option>`;
+      } else {
+        keyPairMsg.textContent = "Error: " + JSON.stringify(data.detail);
+      }
+    } catch (e) {
+      keyPairMsg.textContent = "Error: " + e.message;
+    }
+  });
+
+  // Deploy form submit handler
+  deployForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    deployResult.textContent = "Deploying VM...";
+    const formData = new FormData(deployForm);
+    const payload = {};
+    formData.forEach((v, k) => (payload[k] = v));
+
+    try {
+      const res = await fetch("/deploy", {
+        method: "POST",
+        body: new URLSearchParams(payload),
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        deployResult.textContent = `Success! VM '${data.vm_name}' is deploying on ${data.cloud}`;
+      } else {
+        deployResult.textContent = "Error: " + JSON.stringify(data.detail);
+      }
+    } catch (e) {
+      deployResult.textContent = "Error: " + e.message;
+    }
+  });
+
+  // Helper: populate dropdown options (value then text)
+  function populateDropdown(selectElem, options, valField, textField) {
+    selectElem.innerHTML = "";
+    selectElem.appendChild(new Option("-- Select --", ""));
+    options.forEach(o => {
+      const opt = new Option(o[textField], o[valField]);
+      selectElem.appendChild(opt);
+    });
+  }
+
+  // Helper: reset dropdown with a single message option
+  function resetDropdown(selectElem, message) {
+    selectElem.innerHTML = "";
+    selectElem.appendChild(new Option(message, ""));
+  }
+</script>
+</body>
+</html>

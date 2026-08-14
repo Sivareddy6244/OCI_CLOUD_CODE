@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Multi-Cloud Portal</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
+  <style>
+    body {
+      padding: 40px;
+      background: #f8f9fa;
+    }
+    h2 {
+      margin-bottom: 30px;
+    }
+    .form-section {
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2 class="text-center">Multi-Cloud eStore</h2>
+    <form id="deployForm">
+      <div class="form-section">
+        <label for="cloud" class="form-label">Cloud Provider</label>
+        <select id="cloud" class="form-select" name="cloud" required>
+          <option value="">-- Choose --</option>
+          <option value="aws">AWS</option>
+          <option value="azure">AZURE</option>
+          <option value="gcp">GCP</option>
+          <option value="oci">OCI</option>
+        </select>
+      </div>
+
+      <div class="form-section">
+        <label for="account" class="form-label">Account / Subscription</label>
+        <select id="account" class="form-select" name="account" required>
+          <option value="">Select Cloud First</option>
+        </select>
+      </div>
+
+      <div class="form-section" id="azureSubscriptionSection" style="display:none;">
+        <label for="subscription" class="form-label">Azure Subscription</label>
+        <select id="subscription" class="form-select" name="subscription">
+          <option value="">Select Subscription</option>
+        </select>
+      </div>
+
+      <div class="form-section" id="azureResourceGroupSection" style="display:none;">
+        <label for="resource_group" class="form-label">Azure Resource Group</label>
+        <select id="resource_group" class="form-select" name="resource_group">
+          <option value="">Select Resource Group</option>
+        </select>
+      </div>
+
+      <div class="form-section" id="vpcSection">
+        <label for="vpc" class="form-label">VPC / Virtual Network</label>
+        <select id="vpc" class="form-select" name="vpc_id" required>
+          <option value="">Select Account First</option>
+        </select>
+      </div>
+
+      <div class="form-section" id="subnetSection">
+        <label for="subnet" class="form-label">Subnet</label>
+        <select id="subnet" class="form-select" name="subnet_id" required>
+          <option value="">Select VPC First</option>
+        </select>
+      </div>
+
+      <div class="form-section" id="securityGroupSection">
+        <label for="security_group" class="form-label">Security Group</label>
+        <select id="security_group" class="form-select" name="security_group" required>
+          <option value="">Select VPC First</option>
+        </select>
+      </div>
+
+      <div class="form-section" id="vmNameSection">
+        <label for="vm_name" class="form-label">VM Name</label>
+        <input type="text" id="vm_name" class="form-control" name="vm_name" required />
+      </div>
+
+      <div class="form-section" id="amiSection">
+        <label for="ami" class="form-label">Select AMI / Image</label>
+        <select id="ami" class="form-select" name="ami_name" required>
+          <option value="">Select Account First</option>
+        </select>
+      </div>
+
+      <div class="form-section" id="osTypeSection">
+        <label for="os_type" class="form-label">OS Type</label>
+        <select id="os_type" class="form-select" name="os_type" required>
+          <option value="">-- Select OS Type --</option>
+          <option value="linux">Linux</option>
+          <option value="windows">Windows</option>
+        </select>
+      </div>
+
+      <div class="form-section" id="instanceTypeSection">
+        <label for="instance_type" class="form-label">Instance Type / Size</label>
+        <select id="instance_type" class="form-select" name="instance_type" required>
+          <option value="">Select Account First</option>
+        </select>
+      </div>
+
+      <div class="form-section" id="keyPairSection">
+        <label for="key_pair_name" class="form-label">Key Pair Name</label>
+        <select id="key_pair_name" class="form-select" name="key_pair_name" required>
+          <option value="">Click 'Create Key Pair' first</option>
+        </select>
+        <button type="button" class="btn btn-outline-primary mt-2" id="createKeyBtn">Create Key Pair</button>
+        <div id="keyPairMsg" class="mt-2 text-success"></div>
+      </div>
+
+      <button type="submit" class="btn btn-success">Deploy VM</button>
+    </form>
+
+    <div id="deployResult" class="mt-4"></div>
+  </div>
+
+<script>
+  // Elements
+  const cloudSelect = document.getElementById("cloud");
+  const accountSelect = document.getElementById("account");
+  const vpcSelect = document.getElementById("vpc");
+  const subnetSelect = document.getElementById("subnet");
+  const sgSelect = document.getElementById("security_group");
+  const keyPairSelect = document.getElementById("key_pair_name");
+  const createKeyBtn = document.getElementById("createKeyBtn");
+  const keyPairMsg = document.getElementById("keyPairMsg");
+  const deployForm = document.getElementById("deployForm");
+  const deployResult = document.getElementById("deployResult");
+  const amiSelect = document.getElementById("ami");
+  const instanceTypeSelect = document.getElementById("instance_type");
+
+  // Azure specific elements
+  const azureSubscriptionSection = document.getElementById("azureSubscriptionSection");
+  const subscriptionSelect = document.getElementById("subscription");
+  const azureResourceGroupSection = document.getElementById("azureResourceGroupSection");
+  const resourceGroupSelect = document.getElementById("resource_group");
+
+  // AWS-specific sections for enabling/disabling
+  const vpcSection = document.getElementById("vpcSection");
+  const subnetSection = document.getElementById("subnetSection");
+  const securityGroupSection = document.getElementById("securityGroupSection");
+  const amiSection = document.getElementById("amiSection");
+  const osTypeSection = document.getElementById("osTypeSection");
+  const instanceTypeSection = document.getElementById("instanceTypeSection");
+  const keyPairSection = document.getElementById("keyPairSection");
+  const vmNameSection = document.getElementById("vmNameSection");
+
+  // Utility functions
+  function resetDropdown(selectElem, message) {
+    selectElem.innerHTML = "";
+    selectElem.appendChild(new Option(message, ""));
+  }
+
+  function populateDropdown(selectElem, options, valField, textField) {
+    selectElem.innerHTML = "";
+    selectElem.appendChild(new Option("-- Select --", ""));
+    options.forEach(o => {
+      const opt = new Option(o[textField], o[valField]);
+      selectElem.appendChild(opt);
+    });
+  }
+
+  // Reset all Azure specific dropdowns
+  function resetAzureDropdowns() {
+    resetDropdown(subscriptionSelect, "Select Subscription");
+    resetDropdown(resourceGroupSelect, "Select Resource Group");
+  }
+
+  // Reset all AWS specific dropdowns
+  function resetAWSDropdowns() {
+    resetDropdown(accountSelect, "Select Cloud First");
+    resetDropdown(vpcSelect, "Select Account First");
+    resetDropdown(subnetSelect, "Select VPC First");
+    resetDropdown(sgSelect, "Select VPC First");
+    resetDropdown(amiSelect, "Select Account First");
+    resetDropdown(instanceTypeSelect, "Select Account First");
+    resetDropdown(keyPairSelect, "Click 'Create Key Pair' first");
+    keyPairMsg.textContent = "";
+  }
+
+  // Cloud selection change handler
+  cloudSelect.addEventListener("change", () => {
+    const cloud = cloudSelect.value;
+
+    deployResult.textContent = "";
+    keyPairMsg.textContent = "";
+
+    // Hide/show Azure-specific UI sections
+    if (cloud === "azure") {
+      // Show azure subscription and resource group selectors
+      azureSubscriptionSection.style.display = "";
+      azureResourceGroupSection.style.display = "";
+
+      // Hide AWS specific sections
+      vpcSection.style.display = "none";
+      subnetSection.style.display = "none";
+      securityGroupSection.style.display = "none";
+      amiSection.style.display = "none";
+      osTypeSection.style.display = "none";
+      instanceTypeSection.style.display = "none";
+      keyPairSection.style.display = "none";
+
+      // Reset Azure dropdowns & load accounts (Azure accounts = tenants maybe)
+      resetAzureDropdowns();
+      resetDropdown(accountSelect, "Loading Azure Accounts...");
+      fetchAzureAccounts();
+    } else if (cloud === "aws") {
+      // Show AWS specific sections
+      vpcSection.style.display = "";
+      subnetSection.style.display = "";
+      securityGroupSection.style.display = "";
+      amiSection.style.display = "";
+      osTypeSection.style.display = "";
+      instanceTypeSection.style.display = "";
+      keyPairSection.style.display = "";
+      azureSubscriptionSection.style.display = "none";
+      azureResourceGroupSection.style.display = "none";
+
+      // Reset AWS dropdowns and fetch accounts
+      resetAWSDropdowns();
+      fetchAccounts();
+    } else {
+      // For GCP, OCI or no cloud selected
+      resetAWSDropdowns();
+      resetAzureDropdowns();
+
+      // Hide Azure and AWS UI
+      vpcSection.style.display = "none";
+      subnetSection.style.display = "none";
+      securityGroupSection.style.display = "none";
+      amiSection.style.display = "none";
+      osTypeSection.style.display = "none";
+      instanceTypeSection.style.display = "none";
+      keyPairSection.style.display = "none";
+      azureSubscriptionSection.style.display = "none";
+      azureResourceGroupSection.style.display = "none";
+
+      resetDropdown(accountSelect, "Select Cloud First");
+    }
+  });
+
+  // AWS Account change handler
+  accountSelect.addEventListener("change", () => {
+    if (cloudSelect.value === "aws") {
+      resetDropdown(vpcSelect, "Loading VPCs...");
+      resetDropdown(subnetSelect, "Select VPC First");
+      resetDropdown(sgSelect, "Select VPC First");
+      resetDropdown(keyPairSelect, "Click 'Create Key Pair' first");
+      resetDropdown(amiSelect, "Loading AMIs...");
+      resetDropdown(instanceTypeSelect, "Loading Instance Types...");
+      keyPairMsg.textContent = "";
+
+      const account = accountSelect.value;
+      if (account) {
+        fetchVPCs(account);
+        fetchAMIs(account);
+        fetchInstanceTypes(account);
+      } else {
+        resetDropdown(vpcSelect, "Select Account First");
+        resetDropdown(amiSelect, "Select Account First");
+        resetDropdown(instanceTypeSelect, "Select Account First");
+      }
+    }
+  });
+
+  // AWS VPC change handler
+  vpcSelect.addEventListener("change", () => {
+    if (cloudSelect.value === "aws") {
+      resetDropdown(subnetSelect, "Loading Subnets...");
+      resetDropdown(sgSelect, "Loading Security Groups...");
+      resetDropdown(keyPairSelect, "Click 'Create Key Pair' first");
+      keyPairMsg.textContent = "";
+
+      const account = accountSelect.value;
+      const vpcId = vpcSelect.value;
+      if (vpcId) {
+        fetchSubnets(account, vpcId);
+        fetchSecurityGroups(account, vpcId);
+      } else {
+        resetDropdown(subnetSelect, "Select VPC First");
+        resetDropdown(sgSelect, "Select VPC First");
+      }
+    }
+  });
+
+  // Azure Account change handler
+  accountSelect.addEventListener("change", () => {
+    if (cloudSelect.value === "azure") {
+      resetAzureDropdowns();
+      resetDropdown(subscriptionSelect, "Loading Subscriptions...");
+      resetDropdown(resourceGroupSelect, "Select Resource Group");
+      fetchAzureSubscriptions(accountSelect.value);
+    }
+  });
+
+  // Azure Subscription change handler
+  subscriptionSelect.addEventListener("change", () => {
+    resetDropdown(resourceGroupSelect, "Loading Resource Groups...");
+    fetchAzureResourceGroups(subscriptionSelect.value);
+  });
+
+  // AWS Fetch functions
+
+  async function fetchAccounts() {
+    try {
+      const res = await fetch("/accounts/aws");
+      const data = await res.json();
+      if (res.ok) {
+        const options = data.accounts.map(acc => ({ id: acc.account_id, name: acc.account_id }));
+        populateDropdown(accountSelect, options, "id", "name");
+      } else {
+        resetDropdown(accountSelect, "Error loading accounts");
+      }
+    } catch {
+      resetDropdown(accountSelect, "Error loading accounts");
+    }
+  }
+
+  async function fetchVPCs(accountId) {
+    try {
+      const res = await fetch(`/vpcs/aws?account=${encodeURIComponent(accountId)}`);
+      const data = await res.json();
+      if (res.ok) {
+        const options = data.vpcs.map(v => ({ id: v.vpc_id, name: `${v.vpc_id} (${v.cidr_block})` }));
+        populateDropdown(vpcSelect, options, "id", "name");
+      } else {
+        resetDropdown(vpcSelect, "Error loading VPCs");
+      }
+    } catch {
+      resetDropdown(vpcSelect, "Error loading VPCs");
+    }
+  }
+
+  async function fetchSubnets(accountId, vpcId) {
+    try {
+      const res = await fetch(`/subnets/aws?account=${encodeURIComponent(accountId)}&vpc_id=${encodeURIComponent(vpcId)}`);
+      const data = await res.json();
+      if (res.ok) {
+        const options = data.subnets.map(s => ({ id: s.subnet_id, name: `${s.subnet_id} (${s.cidr_block})` }));
+        populateDropdown(subnetSelect, options, "id", "name");
+      } else {
+        resetDropdown(subnetSelect, "Error loading subnets");
+      }
+    } catch {
+      resetDropdown(subnetSelect, "Error loading subnets");
+    }
+  }
+
+  async function fetchSecurityGroups(accountId, vpcId) {
+    try {
+      const res = await fetch(`/security-groups/aws?account=${encodeURIComponent(accountId)}&vpc_id=${encodeURIComponent(vpcId)}`);
+      const data = await res.json();
+      if (res.ok) {
+        const options = data.security_groups.map(sg => ({
+          id: sg.group_id,
+          name: `${sg.group_name} (${sg.group_id})`,
+        }));
+        populateDropdown(sgSelect, options, "id", "name");
+      } else {
+        resetDropdown(sgSelect, "Error loading security groups");
+      }
+    } catch {
+      resetDropdown(sgSelect, "Error loading security groups");
+    }
+  }
+
+  async function fetchAMIs(account) {
+    try {
+      const res = await fetch(`/amis/aws?account=${encodeURIComponent(account)}`);
+      const data = await res.json();
+      if (res.ok) {
+        const options = data.amis.map(ami => ({ id: ami.ami_id, name: ami.name || ami.ami_id }));
+        populateDropdown(amiSelect, options, "id", "name");
+      } else {
+        resetDropdown(amiSelect, "Error loading AMIs");
+      }
+    } catch {
+      resetDropdown(amiSelect, "Error loading AMIs");
+    }
+  }
+
+  async function fetchInstanceTypes(account) {
+    if (cloudSelect.value !== "aws" || !account) {
+      resetDropdown(instanceTypeSelect, "Select Account First");
+      return;
+    }
+
+    resetDropdown(instanceTypeSelect, "Loading Instance Types...");
+    try {
+      const res = await fetch(`/instance-types/aws?account=${encodeURIComponent(account)}`);
+      const data = await res.json();
+      if (res.ok) {
+        if (data.instance_types && data.instance_types.length > 0) {
+          const options = data.instance_types.map(type => ({ id: type, name: type }));
+          populateDropdown(instanceTypeSelect, options, "id", "name");
+        } else {
+          resetDropdown(instanceTypeSelect, "No instance types found");
+        }
+      } else {
+        resetDropdown(instanceTypeSelect, "Error loading instance types");
+      }
+    } catch {
+      resetDropdown(instanceTypeSelect, "Error loading instance types");
+    }
+  }
+
+  // AWS Create Key Pair
+  createKeyBtn.addEventListener("click", async () => {
+    if (cloudSelect.value !== "aws") {
+      alert("Key pair creation only supported for AWS currently.");
+      return;
+    }
+    const account = accountSelect.value;
+    if (!account) {
+      alert("Select an AWS account first.");
+      return;
+    }
+    try {
+      createKeyBtn.disabled = true;
+      keyPairMsg.textContent = "Creating key pair...";
+      const res = await fetch(`/create-key/aws?account=${encodeURIComponent(account)}`, { method: "POST" });
+      const data = await res.json();
+      if (res.ok && data.key_name) {
+        keyPairMsg.textContent = `Created key pair: ${data.key_name}`;
+        resetDropdown(keyPairSelect, "");
+        const opt = new Option(data.key_name, data.key_name);
+        keyPairSelect.appendChild(opt);
+        keyPairSelect.value = data.key_name;
+      } else {
+        keyPairMsg.textContent = "Failed to create key pair.";
+      }
+    } catch {
+      keyPairMsg.textContent = "Failed to create key pair.";
+    } finally {
+      createKeyBtn.disabled = false;
+    }
+  });
+
+  // Azure Fetch functions
+
+  async function fetchAzureAccounts() {
+    try {
+      const res = await fetch("/accounts/azure");
+      const data = await res.json();
+      if (res.ok) {
+        // Assuming data.accounts is list of tenant or account names
+        const options = data.accounts.map(acc => ({ id: acc.tenant_id || acc.id || acc.account_id, name: acc.name || acc.account_id || acc.tenant_id }));
+        populateDropdown(accountSelect, options, "id", "name");
+      } else {
+        resetDropdown(accountSelect, "Error loading Azure accounts");
+      }
+    } catch {
+      resetDropdown(accountSelect, "Error loading Azure accounts");
+    }
+  }
+
+  async function fetchAzureSubscriptions(accountId) {
+    if (!accountId) {
+      resetDropdown(subscriptionSelect, "Select Subscription");
+      return;
+    }
+    try {
+      const res = await fetch(`/subscriptions/azure?account=${encodeURIComponent(accountId)}`);
+      const data = await res.json();
+      if (res.ok) {
+        const options = data.subscriptions.map(sub => ({ id: sub.subscription_id, name: sub.display_name }));
+        populateDropdown(subscriptionSelect, options, "id", "name");
+      } else {
+        resetDropdown(subscriptionSelect, "Error loading subscriptions");
+      }
+    } catch {
+      resetDropdown(subscriptionSelect, "Error loading subscriptions");
+    }
+  }
+
+  async function fetchAzureResourceGroups(subscriptionId) {
+    if (!subscriptionId) {
+      resetDropdown(resourceGroupSelect, "Select Resource Group");
+      return;
+    }
+    try {
+      const res = await fetch(`/resource-groups/azure?subscription_id=${encodeURIComponent(subscriptionId)}`);
+      const data = await res.json();
+      if (res.ok) {
+        const options = data.resource_groups.map(rg => ({ id: rg.name, name: rg.name }));
+        populateDropdown(resourceGroupSelect, options, "id", "name");
+      } else {
+        resetDropdown(resourceGroupSelect, "Error loading resource groups");
+      }
+    } catch {
+      resetDropdown(resourceGroupSelect, "Error loading resource groups");
+    }
+  }
+
+  // Deploy form submission
+  deployForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    deployResult.textContent = "";
+
+    const formData = new FormData(deployForm);
+    const cloud = formData.get("cloud");
+
+    // Basic validation
+    if (!cloud) {
+      alert("Please select a cloud provider.");
+      return;
+    }
+
+    // Construct data to send depending on cloud
+    let endpoint = "";
+    let payload = {};
+
+    if (cloud === "aws") {
+      endpoint = "/deploy";
+      // Required fields for AWS
+      payload = {
+        cloud: "aws",
+        account_id: formData.get("account"),
+        vpc_id: formData.get("vpc_id"),
+        subnet_id: formData.get("subnet_id"),
+        security_group: formData.get("security_group"),
+        vm_name: formData.get("vm_name"),
+        ami_name: formData.get("ami_name"),
+        os_type: formData.get("os_type"),
+        instance_type: formData.get("instance_type"),
+        key_pair_name: formData.get("key_pair_name"),
+      };
+
+      // Basic AWS validations
+      for (const [key, val] of Object.entries(payload)) {
+        if (!val) {
+          alert(`Please fill in the ${key.replace(/_/g, " ")} field.`);
+          return;
+        }
+      }
+    } else if (cloud === "azure") {
+      endpoint = "/deploy_azure";
+      // Required fields for Azure
+      payload = {
+        cloud: "azure",
+        account_id: formData.get("account"),
+        subscription_id: formData.get("subscription"),
+        resource_group: formData.get("resource_group"),
+        vm_name: formData.get("vm_name"),
+        // You may want to add more Azure specific parameters here,
+        // e.g. VM size, image, network interface, etc.
+      };
+
+      // Basic Azure validations
+      for (const [key, val] of Object.entries(payload)) {
+        if (!val) {
+          alert(`Please fill in the ${key.replace(/_/g, " ")} field.`);
+          return;
+        }
+      }
+    } else {
+      alert("Deployment for this cloud provider is not yet supported.");
+      return;
+    }
+
+    deployResult.textContent = "Deploying VM, please wait...";
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        deployResult.textContent = "Deployment successful! " + (data.message || "");
+      } else {
+        deployResult.textContent = "Deployment failed: " + (data.error || "Unknown error");
+      }
+    } catch (err) {
+      deployResult.textContent = "Deployment failed: " + err.message;
+    }
+  });
+
+  // Initialize page - hide all except cloud select and account placeholder
+  window.onload = () => {
+    // Hide Azure sections initially
+    azureSubscriptionSection.style.display = "none";
+    azureResourceGroupSection.style.display = "none";
+    // Hide AWS sections
+    vpcSection.style.display = "none";
+    subnetSection.style.display = "none";
+    securityGroupSection.style.display = "none";
+    amiSection.style.display = "none";
+    osTypeSection.style.display = "none";
+    instanceTypeSection.style.display = "none";
+    keyPairSection.style.display = "none";
+
+    resetAWSDropdowns();
+    resetAzureDropdowns();
+  };
+</script>
+
+</body>
+</html>

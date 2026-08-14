@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Multi-Cloud VM Portal</title>
+</head>
+<body>
+  <h1>Deploy a VM</h1>
+  <form id="vmForm">
+    <label>Cloud:</label>
+    <select name="cloud">
+      <option value="aws">AWS</option>
+      <option value="azure">Azure</option>
+      <option value="gcp">GCP</option>
+    </select><br><br>
+
+    <label>VM Name:</label>
+    <input type="text" name="vm_name" required><br><br>
+
+    <label>CPU:</label>
+    <input type="number" name="cpu" value="1" min="1"><br><br>
+
+    <label>Memory (GB):</label>
+    <input type="number" name="memory" value="1" min="1"><br><br>
+
+    <button type="submit">Deploy</button>
+  </form>
+
+  <p id="response"></p>
+
+  <script>
+    document.getElementById('vmForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const formData = new FormData(this);
+      const res = await fetch('/deploy', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      document.getElementById('response').innerText = JSON.stringify(data);
+    });
+  </script>
+</body>
+</html>

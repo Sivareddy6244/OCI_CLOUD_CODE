@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Multi-Cloud Portal</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
+  <style>
+    body { padding: 40px; background: #f8f9fa; }
+    h2 { margin-bottom: 30px; }
+    .form-section { margin-bottom: 20px; }
+    .hidden { display: none; }
+    .form-label { font-weight: 500; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2 class="text-center">Multi-Cloud eStore</h2>
+    <form id="deployForm">
+      <!-- Cloud Selection -->
+      <div class="form-section">
+        <label for="cloud" class="form-label">Cloud Provider</label>
+        <select id="cloud" class="form-select" name="cloud" required>
+          <option value="">-- Choose --</option>
+          <option value="aws">AWS</option>
+          <option value="azure">AZURE</option>
+          <option value="gcp" disabled>GCP (Coming Soon)</option>
+          <option value="oci">OCI (Oracle Cloud Infrastructure)</option>
+        </select>
+      </div>
+
+      <!-- AWS Form Section -->
+      <div id="aws-section">
+        <div class="form-section">
+          <label for="account" class="form-label">Account ID</label>
+          <select id="account" class="form-select" name="account" required>
+            <option value="">Select Cloud First</option>
+          </select>
+        </div>
+        <div class="form-section">
+          <label for="vpc" class="form-label">VPC</label>
+          <select id="vpc" class="form-select" name="vpc_id" required>
+            <option value="">Select Account First</option>
+          </select>
+        </div>
+        <div class="form-section">
+          <label for="subnet" class="form-label">Subnet</label>
+          <select id="subnet" class="form-select" name="subnet_id" required>
+            <option value="">Select VPC First</option>
+          </select>
+        </div>
+        <div class="form-section">
+          <label for="security_group" class="form-label">Security Group</label>
+          <select id="security_group" class="form-select" name="security_group" required>
+            <option value="">Select VPC First</option>
+          </select>
+        </div>
+        <div class="form-section">
+          <label for="vm_name" class="form-label">VM Name</label>
+          <input type="text" id="vm_name" class="form-control" name="vm_name" required />
+        </div>
+        <div class="form-section">
+          <label for="ami" class="form-label">Select AMI</label>
+          <select id="ami" class="form-select" name="ami_name" required>
+            <option value="">Select Account First</option>
+          </select>
+        </div>
+        <div class="form-section">
+          <label for="os_type" class="form-label">OS Type</label>
+          <select id="os_type" class="form-select" name="os_type" required>
+            <option value="">-- Select OS Type --</option>
+            <option value="linux">Linux</option>
+            <option value="windows">Windows</option>
+          </select>
+        </div>
+        <div class="form-section">
+          <label for="instance_type" class="form-label">Instance Type</label>
+          <select id="instance_type" class="form-select" name="instance_type" required>
+            <option value="">Select Account First</option>
+          </select>
+        </div>
+        <div class="form-section">
+          <label for="key_pair_name" class="form-label">Key Pair Name</label>
+          <select id="key_pair_name" class="form-select" name="key_pair_name" required>
+            <option value="">Click 'Create Key Pair' first</option>
+          </select>
+          <button type="button" class="btn btn-outline-primary mt-2" id="createKeyBtn">Create Key Pair</button>
+          <div id="keyPairMsg" class="mt-2 text-success"></div>
+        </div>
+      </div>
+
+      <!-- Azure Form Section -->
+      <div id="azure-section" class="hidden">
+        <div class="form-section">
+          <label class="form-label">Subscription</label>
+          <select id="azure-subscription" class="form-select" required>
+            <option value="">-- Select Subscription --</option>
+          </select>
+        </div>
+        <div class="form-section">
+          <label class="form-label">Resource Group</label>
+          <select id="azure-resourceGroup" class="form-select" required disabled>
+            <option value="">-- Select Resource Group --</option>
+          </select>
+        </div>
+        <div class="form-section">
+          <label class="form-label">Virtual Network</label>
+          <select id="azure-vnet" class="form-select" required disabled>
+            <option value="">-- Select VNet --</option>
+          </select>
+        </div>
+        <div class="form-section">
+          <label class="form-label">Subnet</label>
+          <select id="azure-subnet" class="form-select" required disabled>
+            <option value="">-- Select Subnet --</option>
+          </select>
+        </div>
+        <div class="form-section">
+          <label class="form-label">Network Security Group</label>
+          <select id="azure-nsg" class="form-select" required disabled>
+            <option value="">-- Select NSG --</option>
+          </select>
+        </div>
+        <div class="form-section">
+          <label class="form-label">Image Definition</label>
+          <select id="azure-imageDefinition" class="form-select" required disabled>
+            <option value="">-- Select Image Definition --</option>
+          </select>
+        </div>
+        <div class="form-section">
+          <label class="form-label">Image Version</label>
+          <select id="azure-imageVersion" class="form-select" required disabled>
+            <option value="">-- Select Image Version --</option>
+          </select>
+        </div>
+        <div class="form-section">
+          <label class="form-label">VM Size</label>
+          <select id="azure-vmSize" class="form-select" required disabled>
+            <option value="">-- Select VM Size --</option>
+          </select>
+        </div>
+        <div class="form-section">
+          <label class="form-label">OS Disk Type</label>
+          <select id="azure-osDiskType" class="form-select">
+            <option value="Standard_LRS">Standard HDD (Standard_LRS)</option>
+            <option value="StandardSSD_LRS">Standard SSD (StandardSSD_LRS)</option>
+            <option value="Premium_LRS">Premium SSD (Premium_LRS)</option>
+          </select>
+        </div>
+        <div class="form-section">
+          <label class="form-label">Region / Location</label>
+          <input id="azure-location" type="text" class="form-control" readonly placeholder="Auto-filled" required />
+        </div>
+        <div class="form-section">
+          <label class="form-label">Availability Zone</label>
+          <select id="azure-availabilityZone" class="form-select">
+            <option value="">No redundancy</option>
+            <option value="1">Zone 1</option>
+            <option value="2">Zone 2</option>
+            <option value="3">Zone 3</option>
+          </select>
+        </div>
+        <div class="form-section">
+          <label class="form-label">Public IP</label>
+          <select id="azure-publicIpOption" class="form-select">
+            <option value="new">Create new public IP</option>
+            <option value="none">No public IP</option>
+          </select>
+        </div>
+        <div class="form-section">
+          <label class="form-label">VM Name</label>
+          <input id="azure-vmName" type="text" class="form-control" required />
+        </div>
+        <div class="form-section">
+          <label class="form-label">Authentication Type</label>
+          <select id="azure-authType" class="form-select">
+            <option value="password">Username + Password</option>
+          </select>
+        </div>
+        <div id="azure-authFields">
+          <div class="form-section">
+            <label class="form-label">Admin Username</label>
+            <input id="azure-adminUser" type="text" class="form-control" required />
+          </div>
+          <div class="form-section">
+            <label class="form-label">Password</label>
+            <input id="azure-adminPassword" type="password" class="form-control" required />
+          </div>
+        </div>
+        <div class="form-section">
+          <div class="form-check form-check-inline">
+            <input class="form-check-input" type="checkbox" id="azure-managedDisk" checked />
+            <label class="form-check-label" for="azure-managedDisk">Use managed disks</label>
+          </div>
+          <div class="form-check form-check-inline">
+            <input class="form-check-input" type="checkbox" id="azure-acceleratedNetworking" />
+            <label class="form-check-label" for="azure-acceleratedNetworking">Accelerated networking</label>
+          </div>
+          <div class="form-check form-check-inline">
+            <input class="form-check-input" type="checkbox" id="azure-deletePublicIPOnDelete" checked />
+            <label class="form-check-label" for="azure-deletePublicIPOnDelete">Delete public IP on delete</label>
+          </div>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-success">Deploy VM</button>
+    </form>
+    <div id="deployResult" class="mt-4"></div>
+  </div>
+
+<script>
+  console.log("Script loaded");
+
+  const awsSection = document.getElementById("aws-section");
+  const azureSection = document.getElementById("azure-section");
+  const deployForm = document.getElementById("deployForm");
+  const deployResult = document.getElementById("deployResult");
+  const cloudSelect = document.getElementById("cloud");
+
+  // --- AWS DOM Elements ---
+  const accountSelect = document.getElementById("account");
+  const vpcSelect = document.getElementById("vpc");
+  const subnetSelect = document.getElementById("subnet");
+  const sgSelect = document.getElementById("security_group");
+
+  // --- AWS: Create SG panel DOM ---
+  const awsCreateSgPanel = document.getElementById("aws-create-sg");
+  const awsSgVpcId = document.getElementById("aws_sg_vpc_id");
+
+  const keyPairSelect = document.getElementById("key_pair_name");
+  const createKeyBtn = document.getElementById("createKeyBtn");
+  const keyPairMsg = document.getElementById("keyPairMsg");
+  const amiSelect = document.getElementById("ami");
+  const instanceTypeSelect = document.getElementById("instance_type");
+
+  // --- Azure DOM Elements ---
+  const azureSubscription = document.getElementById("azure-subscription");
+  const azureResourceGroup = document.getElementById("azure-resourceGroup");
+  const azureVnet = document.getElementById("azure-vnet");
+  const azureSubnet = document.getElementById("azure-subnet");
+  const azureNsg = document.getElementById("azure-nsg");
+
+  // --- Azure: Create NSG panel DOM ---
+  const azureCreateNsgPanel = document.getElementById("azure-create-nsg");
+
+  const azureImageDefinition = document.getElementById("azure-imageDefinition");
+  const azureImageVersion = document.getElementById("azure-imageVersion");
+  const azureVmSize = document.getElementById("azure-vmSize");
+  const azureOsDiskType = document.getElementById("azure-osDiskType");
+  const azureLocation = document.getElementById("azure-location");
+  const azureAvailabilityZone = document.getElementById("azure-availabilityZone");
+  const azurePublicIpOption = document.getElementById("azure-publicIpOption");
+  const azureVmName = document.getElementById("azure-vmName");
+  const azureAuthType = document.getElementById("azure-authType");
+  const azureAuthFields = document.getElementById("azure-authFields");
+  const azureAdminUser = document.getElementById("azure-adminUser");
+  const azureAdminPassword = document.getElementById("azure-adminPassword");
+  const azureManagedDisk = document.getElementById("azure-managedDisk");
+  const azureAcceleratedNetworking = document.getElementById("azure-acceleratedNetworking");
+  const azureDeletePublicIPOnDelete = document.getElementById("azure-deletePublicIPOnDelete");
+
+  // --- Cloud Switch Logic ---
+  function showCloudSection(cloud) {
+    if (cloud === "aws") {
+      awsSection.classList.remove("hidden");
+      azureSection.classList.add("hidden");
+      resetAWSDropdowns();
+      fetchAccounts();
+    } else if (cloud === "azure") {
+      azureSection.classList.remove("hidden");
+      awsSection.classList.add("hidden");
+      resetAzureDropdowns();
+      loadAzureSubscriptions();
+    } else {
+      awsSection.classList.add("hidden");
+      azureSection.classList.add("hidden");
+    }
+    deployResult.textContent = "";
+  }
+  cloudSelect.addEventListener("change", () => showCloudSection(cloudSelect.value));
+
+  // --- AWS Logic ---
+  function resetAWSDropdowns() {
+    resetDropdown(accountSelect, "Select Cloud First");
+    resetDropdown(vpcSelect, "Select Account First");
+    resetDropdown(subnetSelect, "Select VPC First");
+    resetDropdown(sgSelect, "Select VPC First");
+    resetDropdown(keyPairSelect, "Click 'Create Key Pair' first");
+    resetDropdown(amiSelect, "Select Account First");
+    resetDropdown(instanceTypeSelect, "Select Account First");
+    keyPairMsg.textContent = "";
+  }
+  accountSelect.addEventListener("change", () => {
+    resetDropdown(vpcSelect, "Loading VPCs...");
+    resetDropdown(subnetSelect, "Select VPC First");
+    resetDropdown(sgSelect, "Select VPC First");
+    resetDropdown(keyPairSelect, "Click 'Create Key Pair' first");
+    resetDropdown(amiSelect, "Loading AMIs...");
+    resetDropdown(instanceTypeSelect, "Loading Instance Types...");
+    keyPairMsg.textContent = "";
+
+    const account = accountSelect.value;
+    if (account) {
+      fetchVPCs(account);
+      fetchAMIs(account);
+      fetchInstanceTypes(account);
+    } else {
+      resetDropdown(vpcSelect, "Select Account First");
+      resetDropdown(amiSelect, "Select Account First");
+      resetDropdown(instanceTypeSelect, "Select Account First");
+    }
+  });
+  vpcSelect.addEventListener("change", () => {
+    resetDropdown(subnetSelect, "Loading Subnets...");
+    resetDropdown(sgSelect, "Loading Security Groups...");
+    resetDropdown(keyPairSelect, "Click 'Create Key Pair' first");
+    keyPairMsg.textContent = "";
+
+    const account = accountSelect.value;
+    const vpcId = vpcSelect.value;
+    if (vpcId) {
+      fetchSubnets(account, vpcId);
+      fetchSecurityGroups(account, vpcId);
+    } else {
+      resetDropdown(subnetSelect, "Select VPC First");
+      resetDropdown(sgSelect, "Select VPC First");
+    }
+  });
+
+  // AWS: show/hide Create SG panel
+  sgSelect.addEventListener("change", () => {
+    const isCreate = (sgSelect.value === "create_new_sg");
+    if (awsCreateSgPanel) awsCreateSgPanel.classList.toggle("hidden", !isCreate);
+    if (isCreate && awsSgVpcId) awsSgVpcId.value = vpcSelect.value || "";
+  });
+
+  // Hide Create SG panel when VPC changes
+  vpcSelect.addEventListener("change", () => {
+    if (awsCreateSgPanel) awsCreateSgPanel.classList.add("hidden");
+    if (awsSgVpcId) awsSgVpcId.value = vpcSelect.value || "";
+  });
+
+  // Azure: show/hide Create NSG panel
+  azureNsg.addEventListener("change", () => {
+    const isCreate = (azureNsg.value === "create_new_nsg");
+    if (azureCreateNsgPanel) azureCreateNsgPanel.classList.toggle("hidden", !isCreate);
+  });
+
+  async function fetchAccounts() {
+    try {
+      const res = await fetch("/accounts/aws");
+      const data = await res.json();
+      if (res.ok) {
+        const options = data.accounts.map(acc => ({ id: acc.account_id, name: acc.account_id }));
+        populateDropdown(accountSelect, options, "id", "name");
+      } else {
+        resetDropdown(accountSelect, "Error loading accounts");
+      }
+    } catch {
+      resetDropdown(accountSelect, "Error loading accounts");
+    }
+  }
+  async function fetchVPCs(accountId) {
+    try {
+      const res = await fetch(`/vpcs/aws?account=${encodeURIComponent(accountId)}`);
+      const data = await res.json();
+      if (res.ok) {
+        const options = data.vpcs.map(v => ({ id: v.vpc_id, name: `${v.vpc_id} (${v.cidr_block})` }));
+        populateDropdown(vpcSelect, options, "id", "name");
+      } else {
+        resetDropdown(vpcSelect, "Error loading VPCs");
+      }
+    } catch {
+      resetDropdown(vpcSelect, "Error loading VPCs");
+    }
+  }
+  async function fetchSubnets(accountId, vpcId) {
+    try {
+      const res = await fetch(`/subnets/aws?account=${encodeURIComponent(accountId)}&vpc_id=${encodeURIComponent(vpcId)}`);
+      const data = await res.json();
+      if (res.ok) {
+        const options = data.subnets.map(s => ({ id: s.subnet_id, name: `${s.subnet_id} (${s.cidr_block})` }));
+        populateDropdown(subnetSelect, options, "id", "name");
+      } else {
+        resetDropdown(subnetSelect, "Error loading subnets");
+      }
+    } catch {
+      resetDropdown(subnetSelect, "Error loading subnets");
+    }
+  }
+  async function fetchSecurityGroups(accountId, vpcId) {
+    try {
+      const res = await fetch(`/security-groups/aws?account=${encodeURIComponent(accountId)}&vpc_id=${encodeURIComponent(vpcId)}`);
+      const data = await res.json();
+      if (res.ok) {
+        const options = data.security_groups.map(sg => ({
+          id: sg.group_id,
+          name: `${sg.group_name} (${sg.group_id})`,
+        }));
+        populateDropdown(sgSelect, options, "id", "name");
+      } else {
+        resetDropdown(sgSelect, "Error loading security groups");
+      }
+    } catch {
+      resetDropdown(sgSelect, "Error loading security groups");
+    }
+  }
+  async function fetchAMIs(account) {
+    try {
+      const res = await fetch(`/amis/aws?account=${encodeURIComponent(account)}`);
+      const data = await res.json();
+      if (res.ok) {
+        const options = data.amis.map(ami => ({ id: ami.ami_id, name: ami.name || ami.ami_id }));
+        populateDropdown(amiSelect, options, "id", "name");
+      } else {
+        resetDropdown(amiSelect, "Error loading AMIs");
+      }
+    } catch {
+      resetDropdown(amiSelect, "Error loading AMIs");
+    }
+  }
+  async function fetchInstanceTypes(account) {
+    if (cloudSelect.value !== "aws" || !account) {
+      resetDropdown(instanceTypeSelect, "Select Account First");
+      return;
+    }
+    resetDropdown(instanceTypeSelect, "Loading Instance Types...");
+    try {
+      const res = await fetch(`/instance-types/aws?account=${encodeURIComponent(account)}`);
+      const data = await res.json();
+      if (res.ok) {
+        if (data.instance_types && data.instance_types.length > 0) {
+          const options = data.instance_types.map(type => ({ id: type, name: type }));
+          populateDropdown(instanceTypeSelect, options, "id", "name");
+        } else {
+          resetDropdown(instanceTypeSelect, "No instance types found");
+        }
+      } else {
+        resetDropdown(instanceTypeSelect, "Error loading instance types");
+      }
+    } catch {
+      resetDropdown(instanceTypeSelect, "Error loading instance types");
+    }
+  }
+  createKeyBtn.addEventListener("click", async () => {
+    keyPairMsg.textContent = "Creating key pair...";
+    const account = accountSelect.value;
+    if (!account) {
+      keyPairMsg.textContent = "Select account first.";
+      return;
+    }
+    try {
+      const res = await fetch(`/create-keypair/aws?account=${encodeURIComponent(account)}`, { method: "POST" });
+      const data = await res.json();
+      if (res.ok) {
+        keyPairMsg.textContent = `${data.message} (${data.key_pair_name})`;
+        keyPairSelect.innerHTML = `<option value="${data.key_pair_name}">${data.key_pair_name}</option>`;
+      } else {
+        keyPairMsg.textContent = "Error: " + JSON.stringify(data.detail);
+      }
+    } catch (e) {
+      keyPairMsg.textContent = "Error: " + e.message;
+    }
+  });
+
+  // --- Azure Logic ---
+  function resetAzureDropdowns() {
+    clearSelect(azureSubscription, "-- Select Subscription --");
+    clearSelect(azureResourceGroup, "-- Select Resource Group --");
+    clearSelect(azureVnet, "-- Select VNet --");
+    clearSelect(azureSubnet, "-- Select Subnet --");
+    clearSelect(azureNsg, "-- Select NSG --");
+    clearSelect(azureImageDefinition, "-- Select Image Definition --");
+    clearSelect(azureImageVersion, "-- Select Image Version --");
+    clearSelect(azureVmSize, "-- Select VM Size --");
+    azureLocation.value = "";
+    azureVmName.value = "";
+    azureAdminUser.value = "";
+    azureAdminPassword.value = "";
+    azureResourceGroup.disabled = true;
+    azureVnet.disabled = true;
+    azureSubnet.disabled = true;
+    azureNsg.disabled = true;
+    azureImageDefinition.disabled = true;
+    azureImageVersion.disabled = true;
+    azureVmSize.disabled = true;
+  }
+  async function fetchJson(url) {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText}: ${await res.text()}`);
+    return await res.json();
+  }
+  function getPreservedCreateOptions(selectElem) {
+    return Array.from(selectElem.options)
+      .filter(o => (o.value || "").startsWith("create_new_"))
+      .map(o => new Option(o.text, o.value));
+  }
+
+  function clearSelect(sel, txt="-- Select --") {
+    const preserved = getPreservedCreateOptions(sel);
+    sel.innerHTML = `<option value="">${txt}</option>`;
+    preserved.forEach(o => sel.appendChild(o));
+    sel.disabled = true;
+  }
+  function populateDropdown(selectElem, options, valField, textField) {
+    const preserved = getPreservedCreateOptions(selectElem);
+    selectElem.innerHTML = "";
+    selectElem.appendChild(new Option("-- Select --", ""));
+    options.forEach(o => {
+      const opt = new Option(o[textField], o[valField]);
+      selectElem.appendChild(opt);
+    });
+    preserved.forEach(o => selectElem.appendChild(o));
+    selectElem.disabled = false;
+  });
+    selectElem.disabled = false;
+  }
+  async function loadAzureSubscriptions() {
+    try {
+      const subs = await fetchJson(`/api/azure/subscriptions`);
+      populateDropdown(azureSubscription, subs, "id", "name");
+    } catch (e) { alert(e.message); }
+  }
+  azureSubscription.addEventListener("change", async function() {
+    const sub = azureSubscription.value;
+    resetAzureDropdowns();
+    if (!sub) return;
+    try {
+      const rgs = await fetchJson(`/api/azure/resource-groups?subscription_id=${sub}`);
+      populateDropdown(azureResourceGroup, rgs, "name", "name");
+      azureResourceGroup.disabled = false;
+    } catch (e) { alert(e.message); }
+  });
+  azureResourceGroup.addEventListener("change", async function() {
+    const sub = azureSubscription.value;
+    const rg = azureResourceGroup.value;
+    clearSelect(azureVnet);
+    clearSelect(azureSubnet);
+    clearSelect(azureNsg);
+    clearSelect(azureImageDefinition);
+    clearSelect(azureImageVersion);
+    clearSelect(azureVmSize);
+    azureLocation.value = "";
+    if (!sub || !rg) return;
+    try {
+      const vnets = await fetchJson(`/api/azure/vnets?subscription_id=${sub}`);
+      populateDropdown(azureVnet, vnets.filter(v => v.resource_group === rg), "name", "name");
+      azureVnet.disabled = false;
+      const nsgs = await fetchJson(`/api/azure/nsgs?subscription_id=${sub}&resource_group=${rg}`);
+      populateDropdown(azureNsg, nsgs, "id", "name");
+      azureNsg.disabled = false;
+      const defs = await fetchJson(`/api/azure/image-definitions`);
+      populateDropdown(azureImageDefinition, defs, "name", "label");
+      azureImageDefinition.disabled = false;
+    } catch (e) { alert(e.message); }
+  });
+  azureVnet.addEventListener("change", async function() {
+    const sub = azureSubscription.value;
+    const rg = azureResourceGroup.value;
+    const vname = azureVnet.value;
+    azureLocation.value = azureVnet.options[azureVnet.selectedIndex]?.dataset?.location || "";
+    clearSelect(azureSubnet);
+    clearSelect(azureVmSize);
+    if (!sub || !rg || !vname) return;
+    try {
+      const subs = await fetchJson(`/api/azure/subnets?subscription_id=${sub}&resource_group=${rg}&vnet_name=${vname}`);
+      populateDropdown(azureSubnet, subs, "id", "name");
+      azureSubnet.disabled = false;
+      const sizes = await fetchJson(`/api/azure/vm-sizes?subscription_id=${sub}&location=${azureLocation.value}`);
+      populateDropdown(azureVmSize, sizes, "name", "name");
+      azureVmSize.disabled = false;
+    } catch (e) { alert(e.message); }
+  });
+  azureImageDefinition.addEventListener("change", async function() {
+    clearSelect(azureImageVersion);
+    const selOption = azureImageDefinition.options[azureImageDefinition.selectedIndex];
+    if (!selOption || !selOption.value) return;
+    const sub = azureSubscription.value;
+    const rg = azureResourceGroup.value;
+    const defs = await fetchJson(`/api/azure/image-definitions`);
+    const def = defs.find(d => d.name === selOption.value);
+    if (!def) return;
+    try {
+      const vers = await fetchJson(`/api/azure/image-versions?subscription_id=${def.subscription_id}&resource_group=${def.resource_group}&gallery_name=${encodeURIComponent(def.gallery)}&image_definition_name=${encodeURIComponent(def.name)}`);
+      populateDropdown(azureImageVersion, vers, "name", "name");
+      azureImageVersion.disabled = false;
+    } catch (e) { alert(e.message); }
+  });
+
+  // --- Deploy Form Handler ---
+  deployForm.addEventListener("submit", async (e) => {
+    console.log("DeployForm submit triggered!");
+    e.preventDefault();
+    deployResult.textContent = "Deploying VM...";
+
+    if (cloudSelect.value === "aws") {
+      // Collect AWS form data
+      const formData = new FormData(deployForm);
+      const payload = {};
+      formData.forEach((v, k) => (payload[k] = v));
+      try {
+        const res = await fetch("/deploy", {
+          method: "POST",
+          body: new URLSearchParams(payload),
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        });
+        const data = await res.json();
+        if (res.ok) {
+          deployResult.textContent = `Success! VM '${data.vm_name}' is deploying on ${data.cloud}`;
+        } else {
+          deployResult.textContent = "Error: " + JSON.stringify(data.detail);
+        }
+      } catch (e) {
+        deployResult.textContent = "Error: " + e.message;
+      }
+    } else if (cloudSelect.value === "azure") {
+      // Collect Azure form data
+      const payload = {
+        subscription_id: azureSubscription.value,
+        resource_group: azureResourceGroup.value,
+        vnet_name: azureVnet.value,
+        subnet_id: azureSubnet.value,
+        nsg_id: azureNsg.value,
+        gallery_name: azureImageDefinition.options[azureImageDefinition.selectedIndex]?.dataset?.galleryName || "",
+        image_name: azureImageDefinition.value,
+        image_version: azureImageVersion.value,
+        vm_size: azureVmSize.value,
+        location: azureLocation.value,
+        availability_zone: azureAvailabilityZone.value || "",
+        public_ip_option: azurePublicIpOption.value,
+        vm_name: azureVmName.value.trim(),
+        os_disk_type: azureOsDiskType.value,
+        managed_disk: azureManagedDisk.checked,
+        accelerated_networking: azureAcceleratedNetworking.checked,
+        delete_public_ip_on_delete: azureDeletePublicIPOnDelete.checked,
+        image_subscription_id: azureImageDefinition.options[azureImageDefinition.selectedIndex]?.dataset?.subscriptionId || "",
+        image_resource_group: azureImageDefinition.options[azureImageDefinition.selectedIndex]?.dataset?.resourceGroup || "",
+        admin_username: azureAdminUser.value.trim(),
+        admin_password: azureAdminPassword.value.trim(),
+        auth_type: 'password'
+      };
+      if (!payload.subscription_id || !payload.resource_group || !payload.vnet_name || !payload.subnet_id || !payload.nsg_id ||
+        !payload.gallery_name || !payload.image_name || !payload.image_version || !payload.vm_size || !payload.location ||
+        !payload.vm_name || !payload.admin_username || !payload.admin_password) {
+        alert('Please fill all required fields.');
+        deployResult.textContent = '';
+        return;
+      }
+      try {
+        const res = await fetch(`/api/azure/deploy-vm`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const json = await res.json();
+        if (res.ok) {
+          deployResult.textContent = `VM started. ID: ${json.vm_id}`;
+        } else {
+          deployResult.textContent = "Error: " + JSON.stringify(json.detail);
+        }
+      } catch (e) {
+        deployResult.textContent = "Error: " + e.message;
+      }
+    } else {
+      deployResult.textContent = "Cloud provider not supported yet.";
+    }
+  });
+
+  // --- Helpers ---
+  function resetDropdown(selectElem, message) {
+    selectElem.innerHTML = "";
+    selectElem.appendChild(new Option(message, ""));
+  }
+
+  window.onload = () => showCloudSection(cloudSelect.value);
+</script>
+</body>
+</html>

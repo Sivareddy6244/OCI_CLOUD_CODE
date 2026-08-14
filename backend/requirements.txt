@@ -1,0 +1,31 @@
+flask
+fastapi
+uvicorn[standard]
+boto3
+botocore
+azure-identity
+azure-mgmt-resource
+azure-mgmt-subscription
+azure-mgmt-network
+azure-mgmt-compute
+azure-mgmt-authorization
+azure-core
+pydantic
+google-auth
+google-api-python-client
+google-auth-httplib2
+google-auth-oauthlib
+python-multipart
+authlib>=1.2
+httpx>=0.24
+pyjwt
+#ms-identity-web @ git+https://github.com/Azure-Samples/ms-identity-python-utilities
+#ms-identity-web @ git+https://github.com/Azure-Samples/ms-identity-python-samples-common
+#ms-identity-web>=1.1.0
+identity>=0.5.0
+requests
+cachetools
+starlette
+pyodbc==5.2.0
+SQLAlchemy==2.0.36
+oci==2.182.0

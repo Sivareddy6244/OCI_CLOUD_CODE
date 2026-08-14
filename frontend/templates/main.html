@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MultiCloud Portal</title>
+</head>
+<body>
+    <h1>Welcome {{ request.session['user'].get('email') }}</h1>
+    <h2>Azure Subscriptions:</h2>
+    <ul>
+        {% for sub in azure_subs %}
+        <li>{{ sub.name }} ({{ sub.id }})</li>
+        {% endfor %}
+    </ul>
+    <h2>AWS Accounts:</h2>
+    <ul>
+        {% for acct in aws_accounts %}
+        <li>{{ acct.account_name }} ({{ acct.account_id }})</li>
+        {% endfor %}
+    </ul>
+</body>
+</html>

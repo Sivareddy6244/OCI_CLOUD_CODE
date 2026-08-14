@@ -1,0 +1,36 @@
+name: Build and deploy Python app to Azure Web App - MultiCloud-eStore
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_DCC7541EE51147858D84C56C1D3EE16E }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_B189F4E64FE74DDA9483F120D9FD55AB }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_E2A9728C9C1C4699BE791F121140A27F }}
+
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: 'Multi-Cloud-Dev-Portal'
+          slot-name: 'Production'
+          package: .
